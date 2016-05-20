@@ -48,7 +48,21 @@ def hashpw(password, salt):
 
 
 class BrokenCFB(object):
-    """ CFB wrapper used for bf1 mode """
+    """
+    CFB wrapper used for bf1 mode.
+    
+    The problem here is that the first 64 bytes are all encrypted using the same IV.
+    Effectively changing BF1 in a very weak fixed-key xor obfuscator.
+    So when the first 64 bytes contain several 8 byte blocks with identical plain text,
+    this will result in those blocks being encrypted into identical ciphertext.
+    Which in turn will cause the same thing to happen for the next 64 bytes.
+
+    You can see this when encrypting a file with a single line containing all
+    the same characters. The encrypted file will look very repetitive.
+
+    plain[i] = cipher[i] ^ encrypt(cipher[i-8])
+    cipher[-8..-1] = iv
+    """
     def __init__(self, cipher, iv):
         self.cipher = cipher
         self.iv = iv
@@ -64,7 +78,13 @@ class BrokenCFB(object):
 
 
 class GoodCFB(object):
-    """ CFB wrapper used for bf2 """
+    """
+    CFB wrapper used for bf2.
+    
+    plain[i] = cipher[i] ^ encrypt(cipher[i-1])
+    cipher[-1] = iv
+
+    """
     def __init__(self, cipher, iv):
         self.cipher = cipher
         self.iv = iv
