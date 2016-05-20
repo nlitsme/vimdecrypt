@@ -4,6 +4,14 @@ Tool for decrypting VIM encrypted files
 
 Copyright (C) 2016 Willem Hengeveld <itsme@xs4all.nl>
 
+VIM can encrypt text files transparently.
+select the mode using 'set cryptmethod={zip, blowfish, blowfish2}'
+and set the key using 'set key=<secret>'
+
+Or from the commandline using: 'vim -x yourfile.txt'
+
+This tool can decrypt files saved by vim, without using vim.
+
 """
 from __future__ import division, print_function
 import sys
@@ -11,20 +19,11 @@ import struct
 from binascii import b2a_hex, a2b_hex
 from Crypto.Hash import SHA256
 
-"""
-VIM can encrypt text files transparently.
-select the mode using 'set cryptmethod={zip, blowfish, blowfish2}'
-and set the key using 'set key=<secret>'
-
-Or from the commandline using: 'vim -x yourfile.txt'
-
-"""
-
 
 def wordswap(data):
     """ Swap byte order in each DWORD """
     fmt = '%dL' % ((len(data)+3)/4)
-    pad = len(data)%4
+    pad = len(data) % 4
     if pad:
         pad = 4-pad
         data += b"\x00" * pad
@@ -50,7 +49,7 @@ def hashpw(password, salt):
 class BrokenCFB(object):
     """
     CFB wrapper used for bf1 mode.
-    
+
     The problem here is that the first 64 bytes are all encrypted using the same IV.
     Effectively changing BF1 in a very weak fixed-key xor obfuscator.
     So when the first 64 bytes contain several 8 byte blocks with identical plain text,
@@ -80,7 +79,7 @@ class BrokenCFB(object):
 class GoodCFB(object):
     """
     CFB wrapper used for bf2.
-    
+
     plain[i] = cipher[i] ^ encrypt(cipher[i-1])
     cipher[-1] = iv
 
@@ -251,6 +250,7 @@ def main():
             data = fh.read()
             decryptfile(data, args)
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())
