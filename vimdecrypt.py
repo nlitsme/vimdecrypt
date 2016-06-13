@@ -18,6 +18,66 @@ import sys
 import struct
 from binascii import b2a_hex, a2b_hex
 from Crypto.Hash import SHA256
+import zlib
+import codecs
+import time
+
+def SaveAsZip(zipname, filename, filedata):
+    """ Create a PKZIP file containing the zip encrypted vim text,
+        suitable for use with the known plaintext attack tool pkcrack
+    """
+    def LocalFileHeader(name, size):
+        """ create the PKZIP local fileheader """
+        utf8name = name.encode("utf-8")
+        neededVersion = 10
+        flags = 9        # bit0 = encrypted, bit4 = enhdefl(?)
+        method = 0       # stored
+        timestamp = 0
+        crc32 = 0
+        compressedSize = size
+        originalSize = size-12
+        nameLength = len(utf8name)
+        extraLength = 0
+        return b"PK\x03\x04" + struct.pack("<3H4LHH", neededVersion, flags, method, timestamp, crc32, compressedSize, originalSize, nameLength, extraLength) + utf8name
+    
+    def DirEntry(name, size):
+        """ create the PKZIP directory entry """
+        utf8name = name.encode("utf-8")
+        createVersion = 798
+        neededVersion = 10
+        flags = 9
+        method = 0
+        timestamp = 0
+        crc32 = 0
+        compressedSize = size
+        originalSize = size-12
+        nameLength = len(utf8name)
+        extraLength = 0
+        commentLength = 0
+        diskNrStart = 0
+        zipAttrs = 0
+        osAttrs = 0
+        dataOfs = 0
+        return b"PK\x01\x02" + struct.pack("<4H4L5HLL", createVersion, neededVersion, flags, method, timestamp, crc32, compressedSize, originalSize, nameLength, extraLength, commentLength, diskNrStart, zipAttrs, osAttrs, dataOfs) + utf8name
+    def EndofZip(dirSize, dirOfs):
+        """ create the PKZIP end of file marker """
+        thisDiskNr = 0
+        startDiskNr = 0
+        thisEntries = 1
+        totalEntries = 1
+        commentLength = 0
+        return b"PK\x05\x06" + struct.pack("<4HLLH", thisDiskNr, startDiskNr, thisEntries, totalEntries, dirSize, dirOfs, commentLength)
+
+    with open(zipname, "wb") as fh:
+        lfh = LocalFileHeader(filename, len(filedata)+12)
+        dent = DirEntry(filename, len(filedata)+12)
+        eoz = EndofZip(len(dent), len(lfh)+len(filedata)+12)
+
+        fh.write(lfh)
+        fh.write(b'\x00' * 12)
+        fh.write(filedata)
+        fh.write(dent)
+        fh.write(eoz)
 
 
 def wordswap(data):
@@ -101,19 +161,12 @@ class GoodCFB(object):
 
 def makeblowfish(args, key):
     """ Create blowfish cipher """
-    if args.pycrypto:
-        # either using pycrypto
-        from Crypto.Cipher import Blowfish
-        ecb = Blowfish.new(key, mode=Blowfish.MODE_ECB)
-        # convert to little endian
-        original_encrypt = ecb.encrypt
-        ecb.encrypt = lambda data: bytearray(wordswap(original_encrypt(wordswap(data))))
-    else:
-        # or using pure python(3) blowfish module
-        import blowfish
-        ecb = blowfish.Cipher(key, byte_order="little")
-        # make pyCrypto compatible
-        ecb.encrypt = lambda data: bytearray(b''.join(ecb.encrypt_ecb(data)))
+    from Crypto.Cipher import Blowfish
+    ecb = Blowfish.new(key, mode=Blowfish.MODE_ECB)
+    # convert to little endian
+    original_encrypt = ecb.encrypt
+    ecb.encrypt = lambda data: bytearray(wordswap(original_encrypt(wordswap(data))))
+
     return ecb
 
 
@@ -209,46 +262,120 @@ def zip_decrypt(data, pw):
     return plain
 
 
-def decryptfile(data, args):
+def decryptfile(data, password, args):
     """ Determine cryptmethod, decrypt and print to stdout """
     if data[0:12] == b"VimCrypt~01!":
-        plain = zip_decrypt(data[12:], args.password)
+        return zip_decrypt(data[12:], password)
     elif data[0:12] == b"VimCrypt~02!":
-        plain = bf_decrypt("bf1", data[12:], args.password, args)
+        return bf_decrypt("bf1", data[12:], password, args)
     elif data[0:12] == b"VimCrypt~03!":
-        plain = bf_decrypt("bf2", data[12:], args.password, args)
+        return bf_decrypt("bf2", data[12:], password, args)
+    elif data[0:9] == b"VimCrypt~":
+        raise Exception("Unsupported VimCrypt method %s" % data[0:12])
     else:
-        print("unknown vim crypt type: ", b2a_hex(data[:12]))
-        return
-    print(plain.decode("utf-8"))
+        raise Exception("Not a VimCrypt file")
+
+
+def dictionary_words(dictfile, args):
+    """ read words, one per line from the given file, or STDIN """
+    for password in sys.stdin if dictfile=="-" else open(dictfile, "r"):
+        yield password.rstrip("\r\n")
+
+
+def bruteforce_generator(args):
+    """ Generate all 1, 2, 3, .. 10 letter words """
+
+    def incpw(pw):
+        i = 0
+        while i<len(pw) and pw[i]=='z':
+            pw[i] = 'a'
+            i += 1
+        if i==len(pw):
+            return False
+        pw[i] = chr(ord(pw[i])+1)
+        return True
+
+    for l in range(1,10):
+        pw = [ 'a' for _ in range(l) ]
+        while True:
+            yield "".join(pw)
+            if not incpw(pw):
+                break
+
+
+def looks_like_text(data):
+    """
+    Heuristic for determining if we have plaintest:
+    if the compression ration if larger than 1.1 we assume text
+    """
+    if sys.version_info[0] == 2:
+        data = str(data)
+    comp = zlib.compress(data, 1)
+    return len(data)*10>len(comp)*11
+
+
+def password_cracker(data, args):
+    """ run bruteforce or dictionary attack """
+    data = data[:1024]
+    pwgen = dictionary_words(args.dictionary, args) if args.dictionary else bruteforce_generator(args)
+
+    t0 = time.clock()
+    count = 0
+    for password in pwgen:
+        result = decryptfile(data, password, args)
+        if looks_like_text(result):
+            lines = result.split(b"\n", 5)
+            print("probable password: %s" % password)
+            print("---------")
+            print(b"\n".join(lines[:4]).decode("utf-8", errors='ignore'))
+            print("---------")
+        count += 1
+        if (count%1000)==0:
+            print("%8d passwords tried, %d passwords per second" % (count, count/(time.clock()-t0)))
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='vimdecrypt')
     parser.add_argument('--test', action='store_true', help='run vim selftest')
-    parser.add_argument('--pycrypto', action='store_true', help='Use PyCrypto library blowfish')
     parser.add_argument('--verbose', '-v', action='store_true', help='print details about keys etc.')
     parser.add_argument('--password', '-p', type=str, help='Decrypt using password')
+    parser.add_argument('--encoding', '-e', type=str, help='Specify alternate text encoding', default='utf-8')
+    parser.add_argument('--writezip', '-w', action='store_true', help='Save zip encrypted data to a .zip file for cracking')
+    parser.add_argument('--dictionary', '-d', type=str, help='Dictionary attack, pass filename or - for STDIN')
+    parser.add_argument('--bruteforce', '-b', action='store_true', help='Bruteforce attack')
     parser.add_argument('files', nargs='*', type=str)
 
     args = parser.parse_args()
-
-    if not args.pycrypto and sys.version_info[0] == 2:
-        print("pure python blowfish requires python3")
-        return 1
 
     if args.test:
         bf_test(args)
         return
 
+    count = 0
     for fn in args.files:
-        if len(args.files) > 1:
-            print("==>", fn, "<==")
+        try:
+            if len(args.files) > 1:
+                print("==>", fn, "<==")
 
-        with open(fn, "rb") as fh:
-            data = fh.read()
-            decryptfile(data, args)
+            with open(fn, "rb") as fh:
+                data = fh.read()
+                if args.writezip:
+                    if data[0:12] == b"VimCrypt~01!":
+                        SaveAsZip("for_pkcrack-%d.zip" % count, fn, data[12:])
+                if args.dictionary or args.bruteforce:
+                    password_cracker(data, args)
+                else:
+                    plain = decryptfile(data, args.password, args)
+                    if plain:
+                        if args.encoding == "hex":
+                            print(b2a_hex(plain))
+                        else:
+                            print(plain.decode(args.encoding))
+            count += 1
+        except Exception as e:
+            print("EXCEPTION %s" % e)
+            raise
     return 0
 
 
