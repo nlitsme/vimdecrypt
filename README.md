@@ -33,7 +33,7 @@ and set the key using 'set key=<secret>'
 
 Beware when entering the wrong password, VIM wil happily open the file for you.
 And display nonsense content.
-Beware that when you now save this again, it will be quite difficult to recover the original file.
+When you now save this again, it will be quite difficult to recover the original file.
 
 You can retry the password by either quitting and reloading vim, or by typing:
 
