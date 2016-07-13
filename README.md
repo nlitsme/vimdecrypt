@@ -39,7 +39,7 @@ You can retry the password by either quitting and reloading vim, or by typing:
 
     :bdel | edit #
 
-in VIM. [from](http://stackoverflow.com/questions/22353221/not-able-to-recover-vim-encrypted-file-after-set-key)
+in VIM. ([from](http://stackoverflow.com/questions/22353221/not-able-to-recover-vim-encrypted-file-after-set-key))
 
 
 The encryption methods
