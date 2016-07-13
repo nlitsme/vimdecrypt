@@ -223,7 +223,7 @@ def bf_test(args):
         print("unknown crypt -> ", b2a_hex(crypted))
 
 
-def zip_decrypt(data, pw):
+def zip_decrypt(data, pw, args):
     """
     The very weak 'zip' encryption
 
@@ -244,13 +244,15 @@ def zip_decrypt(data, pw):
 
     def updatekeys(keys, byte):
         keys[0] = crc32(keys[0], byte)
-        keys[1] = (keys[1] + (keys[0]&0xFF))&0xFFFFFFFF
-        keys[1] = (keys[1] * 134775813 + 1)&0xFFFFFFFF
+        keys[1] = ((keys[1] + (keys[0]&0xFF)) * 134775813 + 1)&0xFFFFFFFF
         keys[2] = crc32(keys[2], keys[1]>>24)
 
-    keys = [ 305419896, 591751049, 878082192 ]
+    keys = [ 0x12345678, 0x23456789, 0x34567890 ]
     for c in pw:
         updatekeys(keys, ord(c))
+
+    if args.verbose:
+        print("keys: %08x %08x %08x" % tuple(keys))
 
     plain = bytearray()
     for b in bytearray(data):
@@ -265,7 +267,7 @@ def zip_decrypt(data, pw):
 def decryptfile(data, password, args):
     """ Determine cryptmethod, decrypt and print to stdout """
     if data[0:12] == b"VimCrypt~01!":
-        return zip_decrypt(data[12:], password)
+        return zip_decrypt(data[12:], password, args)
     elif data[0:12] == b"VimCrypt~02!":
         return bf_decrypt("bf1", data[12:], password, args)
     elif data[0:12] == b"VimCrypt~03!":
