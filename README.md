@@ -76,6 +76,45 @@ Both blowfish methods use 1000 iterations of a salted sha256 of the password.
 The undo and swap are also encrypted when editing an encrypted file.
 
 
+Security problems
+=================
+
+ZIP
+---
+
+The `zip` method is very weak, you need 13 bytes of plaintext to find the key.
+
+Blowfish / bf1
+--------------
+
+The `bf1` method is problematic for short files. 
+The problem is that the first 8 blocks all use the same `IV`, so:
+
+    enc(block1) XOR enc(block2) == block1 XOR block2
+
+This leaks lots of information which can be used to guess the contents
+of the first 64 bytes.
+
+Blowfish2 / bf2
+---------------
+
+The `bf2` method does not have the broken CFB problem, but 
+since it is using `CFB` without any checksum, an attacker can modify
+the last block of the encrypted text without the user noticing.
+
+Blowfish though not really insecure, is quite old. Better ciphers, like AES,
+or Twofish have been designed since 1993.
+
+password hashing
+----------------
+
+The `ZIP` cipher uses it's own weak hashing algorithm.
+With the `bf1` and `bf2` methods, the user password is hashed 1000 times using sha256.
+This does make bruteforcing a bit more difficult, but still, this method is easily accelerated
+using FPGA or GPU crackers.
+Better would be to use a hashing algorithm which is difficult in both time and space, like
+`PBKDF2`, or `scrypt`.
+
 Password cracking
 =================
 
@@ -91,6 +130,10 @@ Note that this all done in python, and not very fast:
 
 You can also use a word generator like [John the Ripper](http://www.openwall.com/john/), and pipe the wordlist
 to stdin of `vimdecrypt.py`, and specify `-` for the wordlist.
+
+For bruteforce cracking you need some kind of heuristic to tell if the decryption was successful.
+Since encrypted data will generally compress really badly, while text compresses very well,
+this is what i test against in `vimdecrypt`.
 
 
 TODO
