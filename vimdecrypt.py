@@ -367,6 +367,8 @@ def main():
                         SaveAsZip("for_pkcrack-%d.zip" % count, fn, data[12:])
                 if args.dictionary or args.bruteforce:
                     password_cracker(data, args)
+                elif args.password is None:
+                    print("must specify a password")
                 else:
                     plain = decryptfile(data, args.password, args)
                     if plain:
