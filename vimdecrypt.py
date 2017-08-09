@@ -21,6 +21,7 @@ from Crypto.Hash import SHA256
 import zlib
 import codecs
 import time
+import getpass
 
 def SaveAsZip(zipname, filename, filedata):
     """ Create a PKZIP file containing the zip encrypted vim text,
@@ -359,6 +360,9 @@ def main():
         try:
             if len(args.files) > 1:
                 print("==>", fn, "<==")
+
+            if args.password is None:
+                    args.password = getpass.getpass()
 
             with open(fn, "rb") as fh:
                 data = fh.read()
