@@ -314,7 +314,8 @@ def looks_like_text(data):
     if sys.version_info[0] == 2:
         data = str(data)
     comp = zlib.compress(data, 1)
-    return len(data)*10>len(comp)*11
+
+    return len(data) >= len(comp)-6
 
 
 def password_cracker(data, args):
@@ -342,6 +343,7 @@ def main():
     parser = argparse.ArgumentParser(description='vimdecrypt')
     parser.add_argument('--test', action='store_true', help='run vim selftest')
     parser.add_argument('--verbose', '-v', action='store_true', help='print details about keys etc.')
+    parser.add_argument('--debug', action='store_true', help='abort on exceptions.')
     parser.add_argument('--password', '-p', type=str, help='Decrypt using password')
     parser.add_argument('--encoding', '-e', type=str, help='Specify alternate text encoding', default='utf-8')
     parser.add_argument('--writezip', '-w', action='store_true', help='Save zip encrypted data to a .zip file for cracking')
@@ -361,8 +363,8 @@ def main():
             if len(args.files) > 1:
                 print("==>", fn, "<==")
 
-            if args.password is None:
-                    args.password = getpass.getpass()
+            if args.password is None and not args.dictionary and not args.bruteforce:
+                args.password = getpass.getpass()
 
             with open(fn, "rb") as fh:
                 data = fh.read()
@@ -383,7 +385,8 @@ def main():
             count += 1
         except Exception as e:
             print("EXCEPTION %s" % e)
-            raise
+            if args.debug:
+                raise
     return 0
 
 
