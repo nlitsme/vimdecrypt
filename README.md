@@ -143,6 +143,20 @@ TODO
  * bug: wordlist from STDIN works only with one file.
 
 
+SIMILAR PROJECTS
+================
+
+ * [vimdecrypt](https://github.com/gertjanvanzwieten/vimdecrypt) by gertjanvanzwieten - only handles blowfish2 method
+ * [node-vim-blowfish](https://github.com/stelcheck/node-vim-blowfish) by stelcheck - in perl, but not working according to it's readme.
+ * [emacs-vimcryot](https://github.com/wert310/emacs-vimcrypt) by wert310 - an emacs plugin
+ * [crackvim](https://github.com/wjlandryiii/crackvim) by wjlandryiii - a bruteforce cracker
+ * [vimdecrypt](https://github.com/EaterOA/vimdecrypt) - by EaterOA - unfinished code
+ * [vim72bf](https://github.com/xenocons/vim72bf) - by xenocons
+ * [vim-blowfish](https://github.com/nowox/vim-blowfish) - by nowox
+ * [vcm](https://github.com/AlexAtNet/vcm) - by AlexAtNet, in go
+ * [vimcrypt.py](https://gist.github.com/amtal/d482a2f8913bc6e2c2e0) - gist
+
+
 AUTHOR
 ======
 
