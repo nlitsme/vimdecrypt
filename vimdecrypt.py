@@ -16,12 +16,13 @@ This tool can decrypt files saved by vim, without using vim.
 from __future__ import division, print_function
 import sys
 import struct
-from binascii import b2a_hex, a2b_hex
-from Crypto.Hash import SHA256
 import zlib
 import codecs
 import time
 import getpass
+from binascii import b2a_hex, a2b_hex
+from Crypto.Hash import SHA256
+
 
 def SaveAsZip(zipname, filename, filedata):
     """ Create a PKZIP file containing the zip encrypted vim text,
@@ -39,8 +40,20 @@ def SaveAsZip(zipname, filename, filedata):
         originalSize = size-12
         nameLength = len(utf8name)
         extraLength = 0
-        return b"PK\x03\x04" + struct.pack("<3H4LHH", neededVersion, flags, method, timestamp, crc32, compressedSize, originalSize, nameLength, extraLength) + utf8name
-    
+
+        return b"PK\x03\x04" \
+                    + struct.pack("<3H4LHH",
+                                  neededVersion,
+                                  flags,
+                                  method,
+                                  timestamp,
+                                  crc32,
+                                  compressedSize,
+                                  originalSize,
+                                  nameLength,
+                                  extraLength) \
+                    + utf8name
+
     def DirEntry(name, size):
         """ create the PKZIP directory entry """
         utf8name = name.encode("utf-8")
@@ -59,7 +72,26 @@ def SaveAsZip(zipname, filename, filedata):
         zipAttrs = 0
         osAttrs = 0
         dataOfs = 0
-        return b"PK\x01\x02" + struct.pack("<4H4L5HLL", createVersion, neededVersion, flags, method, timestamp, crc32, compressedSize, originalSize, nameLength, extraLength, commentLength, diskNrStart, zipAttrs, osAttrs, dataOfs) + utf8name
+
+        return b"PK\x01\x02" \
+                    + struct.pack("<4H4L5HLL",
+                                  createVersion,
+                                  neededVersion,
+                                  flags,
+                                  method,
+                                  timestamp,
+                                  crc32,
+                                  compressedSize,
+                                  originalSize,
+                                  nameLength,
+                                  extraLength,
+                                  commentLength,
+                                  diskNrStart,
+                                  zipAttrs,
+                                  osAttrs,
+                                  dataOfs) \
+                    + utf8name
+
     def EndofZip(dirSize, dirOfs):
         """ create the PKZIP end of file marker """
         thisDiskNr = 0
@@ -67,7 +99,16 @@ def SaveAsZip(zipname, filename, filedata):
         thisEntries = 1
         totalEntries = 1
         commentLength = 0
-        return b"PK\x05\x06" + struct.pack("<4HLLH", thisDiskNr, startDiskNr, thisEntries, totalEntries, dirSize, dirOfs, commentLength)
+
+        return b"PK\x05\x06" \
+                    + struct.pack("<4HLLH",
+                                  thisDiskNr,
+                                  startDiskNr,
+                                  thisEntries,
+                                  totalEntries,
+                                  dirSize,
+                                  dirOfs,
+                                  commentLength)
 
     with open(zipname, "wb") as fh:
         lfh = LocalFileHeader(filename, len(filedata)+12)
@@ -298,7 +339,7 @@ def bruteforce_generator(args):
         pw[i] = chr(ord(pw[i])+1)
         return True
 
-    for l in range(1,10):
+    for l in range(1, 10):
         pw = [ 'a' for _ in range(l) ]
         while True:
             yield "".join(pw)
@@ -310,6 +351,8 @@ def looks_like_text(data):
     """
     Heuristic for determining if we have plaintest:
     if the compression ration if larger than 1.1 we assume text
+
+    Note that this will miss succesful decryptions of small files.
     """
     if sys.version_info[0] == 2:
         data = str(data)
@@ -323,10 +366,11 @@ def password_cracker(data, args):
     data = data[:1024]
     pwgen = dictionary_words(args.dictionary, args) if args.dictionary else bruteforce_generator(args)
 
-    t0 = time.clock()
+    t0 = time.perf_counter()
     count = 0
     for password in pwgen:
         result = decryptfile(data, password, args)
+
         if looks_like_text(result):
             lines = result.split(b"\n", 5)
             print("probable password: %s" % password)
@@ -335,7 +379,7 @@ def password_cracker(data, args):
             print("---------")
         count += 1
         if (count%1000)==0:
-            print("%8d passwords tried, %d passwords per second" % (count, count/(time.clock()-t0)))
+            print("%8d passwords tried, %d passwords per second" % (count, count/(time.perf_counter()-t0)))
 
 
 def main():
