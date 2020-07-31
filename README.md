@@ -127,13 +127,30 @@ Note that this all done in python, and not very fast:
 |  bf2 | 300 pw/sec  | python2, pycrypto
 |  bf2 | 180 pw/sec  | python3, pycrypto
 
+Example:
+
+    python3 vimdecrypt.py -d words.txt  encrypted.txt
+
+or 
+
+    python3 vimdecrypt.py -b encrypted.txt
+
 
 You can also use a word generator like [John the Ripper](http://www.openwall.com/john/), and pipe the wordlist
 to stdin of `vimdecrypt.py`, and specify `-` for the wordlist.
 
+Like this:
+
+    john --wordlist=words.txt --rules --stdout | python3 vimdecrypt.py -d - encrypted.txt
+
+
 For bruteforce cracking you need some kind of heuristic to tell if the decryption was successful.
 Since encrypted data will generally compress really badly, while text compresses very well,
 this is what i test against in `vimdecrypt`.
+
+Note that unlike .zip files, VIM does not store the CRC of the original file, so you can't use that to
+validate the success of the decryption.
+
 
 
 TODO
