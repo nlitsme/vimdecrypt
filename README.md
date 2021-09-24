@@ -11,7 +11,12 @@ vimdecrypt should work with both python2 and python3.
 
 Usage:
 
-   python vimdecrypt.py -p PASSWORD yourfile.txt
+    python vimdecrypt.py -p PASSWORD yourfile.txt
+
+Or with dictionary:
+
+    python vimdecrypt.py --dictionary /usr/share/wordlists/rockyou.txt yourfile.txt
+
 
 | option             | description
 |:------------------ |:-------------------------
