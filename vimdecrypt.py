@@ -291,7 +291,9 @@ def zip_decrypt(data, pw, args):
 
     keys = [ 0x12345678, 0x23456789, 0x34567890 ]
     for c in pw:
-        updatekeys(keys, ord(c))
+        if type(c)==str:
+            c = ord(c)
+        updatekeys(keys, c)
 
     if args.verbose:
         print("keys: %08x %08x %08x" % tuple(keys))
