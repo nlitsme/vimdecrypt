@@ -29,6 +29,11 @@ Or with dictionary:
 | --bruteforce       | try all lowercase passwords
 
 
+A second tool will decrypt the swap file:
+
+    python vimswap.py -p PASSWORD .yourfile.txt.swp
+
+
 VIM
 ===
 
@@ -156,6 +161,14 @@ this is what i test against in `vimdecrypt`.
 Note that unlike .zip files, VIM does not store the CRC of the original file, so you can't use that to
 validate the success of the decryption.
 
+
+swapfile
+========
+
+When you first type/insert text in an empty file, and then set the encryption key, the swapfile will
+be unencrypted until you actually save the file.
+
+If you first set the encryption key, then the swapfile will be encrypted immediately.
 
 
 TODO
