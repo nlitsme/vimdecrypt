@@ -54,6 +54,9 @@ class Header:
         self.baseofs = rd.tell()
 
         self.magic = rd.readstr(2)      # b0: plain,  bc: zip, bC: bf, bd: bf2
+        if self.magic not in ('b0', 'bC', 'bd', 'bc'):
+            raise Exception("not a vim swap file")
+
         self.version = rd.readstr(10)   # 0x02   char_u      b0_version[10]; // Vim version string
         self.pagesize = rd.read32le()   # 0x0c   char_u      b0_page_size[4];// number of bytes per page
         self.mtime = rd.read32le()      # 0x10   char_u      b0_mtime[4];    // last modification time of file
