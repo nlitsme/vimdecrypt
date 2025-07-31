@@ -3,10 +3,7 @@ VimDecrypt
 
 Tool for decrypting VIM encrypted files.
 
-Dependencies:
- * [pycrypto](https://pypi.python.org/pypi/pycrypto)
-
-vimdecrypt should work with both python2 and python3.
+vimdecrypt should work python3.
 
 
 Usage:
@@ -174,8 +171,9 @@ If you first set the encryption key, then the swapfile will be encrypted immedia
 TODO
 ====
 
- * Add decryptor for encrypted .swp files
  * bug: wordlist from STDIN works only with one file.
+ * research if you can recover files which are accidentally encrypted twice
+   or decrypted with the wrong password, and then accidentally saved.
 
 
 SIMILAR PROJECTS
